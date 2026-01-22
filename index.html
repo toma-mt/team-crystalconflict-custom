@@ -4,15 +4,31 @@
 <meta charset="UTF-8">
 <title>クリコンカスタム用チーム分け </title>
 <style>
-body { font-family: sans-serif; max-width:600px; margin:auto; }
+body {
+  font-family: sans-serif;
+  max-width:600px;
+  margin:auto;
+  
+  /* クリスタル風背景 */
+  background: linear-gradient(135deg, #a0e9ff, #f3f0ff, #c0eaff);
+  background-size: 400% 400%;
+  animation: crystalGradient 15s ease infinite;
+}
+
+/* 背景のゆっくりグラデーションアニメーション */
+@keyframes crystalGradient {
+  0% {background-position:0% 50%;}
+  50% {background-position:100% 50%;}
+  100% {background-position:0% 50%;}
+}
+
 ul { list-style: none; padding: 0; }
 li { margin: 2px 0; padding: 2px 5px; border-radius: 4px; color: white; }
 table { border-collapse: collapse; margin-bottom:10px; width:100%; }
 td, th { border:1px solid #aaa; padding:4px; text-align:center; }
-button { margin-top:10px; padding:5px 10px; font-size:16px; }
+button { margin-top:10px; padding:5px 10px; font-size:16px; cursor:pointer; }
 </style>
-</head>
-<body>
+
 
 <h2>クリコンカスタム用チーム分け </h2>
 
