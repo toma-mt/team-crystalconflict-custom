@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>クリコンカスタム用チーム分け </title>
+<style>
+body { font-family: sans-serif; max-width:600px; margin:auto; }
+ul { list-style: none; padding: 0; }
+li { margin: 2px 0; padding: 2px 5px; border-radius: 4px; color: white; }
+table { border-collapse: collapse; margin-bottom:10px; width:100%; }
+td, th { border:1px solid #aaa; padding:4px; text-align:center; }
+button { margin-top:10px; padding:5px 10px; font-size:16px; }
+</style>
+</head>
+<body>
+
+<h2>クリコンカスタム用チーム分け </h2>
+
+<section>
+  <h3>メンバー入力（最大10人）</h3>
+  <table id="memberInputs">
+    <tr>
+      <th>名前</th>
+      <th>実力</th>
+    </tr>
+  </table>
+</section>
+
+<button id="run">チーム分け実行</button>
+<button id="copy">結果をコピー（名前のみ）</button>
+
+<h3>アストラ</h3>
+<ul id="teamA"></ul>
+
+<h3>アンブラ</h3>
+<ul id="teamB"></ul>
+
+<script>
+const memberBody = document.getElementById("memberInputs");
+const rankMap = {
+  "~ゴールド":1, "プラチナ":2, "ダイアモンド":3, 
+  "クリスタル（～1000）":4, "クリスタル（1000～1999）":5, 
+  "オメガ":6, "アルテマ":7
+};
+const rankNames = Object.keys(rankMap);
+
+// 入力欄10人分生成
+for(let i=0;i<10;i++){
+  memberBody.innerHTML += `<tr>
+    <td><input class="name"></td>
+    <td>
+      <select class="power">
+        ${rankNames.map(r=>`<option value="${r}">${r}</option>`).join("")}
+      </select>
+    </td>
+  </tr>`;
+}
+
+let lastTeams = [[],[]]; // コピー用に保持
+
+// 実行ボタン
+document.getElementById("run").onclick = ()=>{
+  const rows = [...document.querySelectorAll("#memberInputs tr")].slice(1);
+  const players = rows.map(r=>{
+    const name = r.querySelector(".name").value;
+    const power = rankMap[r.querySelector(".power").value];
+    const rankName = r.querySelector(".power").value;
+    return {name,power,rankName};
+  });
+
+  const teams = divideTeams(players);
+  lastTeams = teams; // コピー用に保存
+  displayTeams(teams);
+};
+
+// チーム分け（実力のみ）
+function divideTeams(players){
+  const sorted = [...players].sort((a,b)=>b.power-a.power);
+  const teamA=[], teamB=[];
+  let sumA=0, sumB=0;
+  sorted.forEach(p=>{
+    if(sumA <= sumB){ teamA.push(p); sumA+=p.power; }
+    else { teamB.push(p); sumB+=p.power; }
+  });
+  return [teamA, teamB];
+}
+
+// 結果表示（画面は色付きでランクも表示）
+function displayTeams([teamA,teamB]){
+  const elA=document.getElementById("teamA");
+  const elB=document.getElementById("teamB");
+  elA.innerHTML=""; elB.innerHTML="";
+
+  const getColor = power=>{
+    const intensity = Math.floor(50+(power-1)*(205/6));
+    return `rgb(${intensity},50,50)`;
+  }
+
+  teamA.sort((a,b)=>b.power-a.power);
+  teamB.sort((a,b)=>b.power-a.power);
+
+  teamA.forEach(p=>{
+    elA.innerHTML+=`<li style="color:white;background-color:${getColor(p.power)};padding:2px 5px;margin:2px 0;border-radius:4px;">
+      ${p.name}：—（${p.rankName}）
+    </li>`;
+  });
+  teamB.forEach(p=>{
+    elB.innerHTML+=`<li style="color:white;background-color:${getColor(p.power)};padding:2px 5px;margin:2px 0;border-radius:4px;">
+      ${p.name}：—（${p.rankName}）
+    </li>`;
+  });
+}
+
+// 結果コピーボタン（名前のみ）
+document.getElementById("copy").onclick = ()=>{
+  const [teamA,teamB] = lastTeams;
+  if(teamA.length === 0 && teamB.length === 0){ alert("まずチーム分けを実行してください"); return; }
+
+  let text = "【アストラ】\n";
+  teamA.forEach(p=>text+=`${p.name}\n`);
+  text += "\n【アンブラ】\n";
+  teamB.forEach(p=>text+=`${p.name}\n`);
+
+  navigator.clipboard.writeText(text).then(()=>{
+    alert("名前だけコピーしました！");
+  }).catch(err=>{
+    alert("コピーに失敗しました: "+err);
+  });
+};
+</script>
+
+</body>
+</html>
