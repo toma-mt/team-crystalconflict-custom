@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>クリコンカスタムチーム分け</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+  font-family:"Noto Serif JP","Yu Mincho",serif;
+  max-width:1000px;margin:auto;padding-bottom:220px;
+  background:linear-gradient(135deg,#a0e9ff,#f3f0ff,#c0eaff);
+  background-size:400% 400%;animation:crystal 15s ease infinite;
+}
+@keyframes crystal{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.ff-panel{background:rgba(20,20,30,.75);border:1px solid rgba(255,215,120,.6);border-radius:12px;padding:15px;margin-bottom:25px;}
+h1,h2,h3{color:#f5e6b0;text-align:center;text-shadow:0 0 5px rgba(255,215,120,.6);}
+table{width:100%;border-collapse:collapse;background:rgba(0,0,0,.4);border-radius:10px;}
+th{background:rgba(255,215,120,.15);color:#f5e6b0} td{padding:6px;text-align:center}
+input,select,textarea{width:100%;padding:6px;font-size:16px;}
+button{width:100%;padding:10px;margin:6px 0;font-size:16px;background:linear-gradient(#3a3a4f,#1c1c2a);border:1px solid rgba(255,215,120,.7);color:#f5e6b0;border-radius:10px;}
+ul{list-style:none;padding:0} li{margin:6px 0;padding:8px;border-radius:8px;color:white;}
+.faction{display:flex;justify-content:center;align-items:center;gap:8px}
+.faction-icon{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.faction-astra{background:radial-gradient(circle,#fff6cc,#d4af37)}
+.faction-umbra{background:radial-gradient(circle,#cbbcff,#4b3f72)}
+textarea.memo{margin-top:6px;background:rgba(255,255,255,.05);color:white;border:none;border-radius:6px;}
+@keyframes blink{0%{opacity:1}50%{opacity:.3}100%{opacity:1}}
+.blink{animation:blink 1s infinite}
+.fixed-footer{position:fixed;bottom:0;left:0;width:100%;background:rgba(20,20,30,.85);border-top:1px solid rgba(255,215,120,.5);color:#f5e6b0;font-size:12px;text-align:center;padding:10px 0;}
+</style>
+</head>
+<body>
+<h1>クリコンカスタムチーム振り分け</h1>
+
+<div class="ff-panel">
+<h2>階級・レート基準</h2>
+<table id="powerTable">
+<tr><th>PLAYER</th><th>階級・レート</th></tr>
+</table>
+
+<button onclick="runPower()">チーム分け</button>
+<button onclick="copyTeams(false)">結果コピー（名前のみ）</button>
+<button onclick="copyTeams(true)">結果コピー（/a付き）</button>
+
+<div class="faction">
+  <span class="faction-icon faction-astra">☀</span><h3>アストラ</h3>
+</div>
+<p id="sumA" style="text-align:center"></p>
+<ul id="powerA"></ul>
+
+<div class="faction">
+  <span class="faction-icon faction-umbra">🌙</span><h3>アンブラ</h3>
+</div>
+<p id="sumB" style="text-align:center"></p>
+<ul id="powerB"></ul>
+
+<p id="powerDiff" style="text-align:center;font-weight:bold"></p>
+
+<button id="reshuffleBtn" style="display:none" onclick="reshuffle()">
+🔁 もう一度シャッフル
+</button>
+
+<p id="goodBalance" style="display:none;text-align:center;font-weight:bold;color:#4CAF50">
+✅ 良バランス
+</p>
+</div>
+
+<div class="ff-panel">
+<h2>チーム履歴（メモ）</h2>
+<ul id="history"></ul>
+<button onclick="clearHistory()" style="background:#a94442">履歴全削除</button>
+</div>
+
+<footer class="fixed-footer">
+<p>&copy; 2010 - 2025 SQUARE ENIX CO., LTD. All Rights Reserved.</p>
+</footer>
+
+<script>
+/* ====== 定数 ====== */
+const ranks=[
+ "～ゴールド","プラチナ","ダイアモンド",
+ "クリスタル（～1000）",
+ "クリスタル上位（1001～2000）",
+ "オメガ（2001～3000）",
+ "オメガ上位（3001～4000）",
+ "アルテマ（4000～）"
+];
+const rankValue={
+ "～ゴールド":1,"プラチナ":2,"ダイアモンド":3,
+ "クリスタル（～1000）":4,"クリスタル上位（1001～2000）":5,
+ "オメガ（2001～3000）":6,"オメガ上位（3001～4000）":7,
+ "アルテマ（4000～）":8
+};
+const rankColor={
+ "～ゴールド":"#FFD700",           // 黄色
+ "プラチナ":"#7FDBFF",             // 水色
+ "ダイアモンド":"#FFA500",         // オレンジ
+ "クリスタル（～1000）":"#1E90FF", // 青
+ "クリスタル上位（1001～2000）":"#0B1C3D", // 紺色
+ "オメガ（2001～3000）":"#800080",       // 紫
+ "オメガ上位（3001～4000）":"#4B0082",    // 濃い紫
+ "アルテマ（4000～）":"#FF0000"       // 赤
+};
+
+/* ====== 初期化 ====== */
+const table=document.getElementById("powerTable");
+const historyList=document.getElementById("history");
+const powerA=document.getElementById("powerA");
+const powerB=document.getElementById("powerB");
+const sumAEl=document.getElementById("sumA");
+const sumBEl=document.getElementById("sumB");
+const powerDiff=document.getElementById("powerDiff");
+const reshuffleBtn=document.getElementById("reshuffleBtn");
+const goodBalance=document.getElementById("goodBalance");
+
+for(let i=0;i<10;i++){
+ table.innerHTML+=`
+ <tr>
+  <td><input></td>
+  <td><select>${ranks.map(r=>`<option>${r}</option>`).join("")}</select></td>
+ </tr>`;
+}
+
+let history=JSON.parse(localStorage.getItem("history")||"[]");
+renderHistory();
+
+/* ====== チーム分け ====== */
+function runPower(){calculateTeams(true);}
+function reshuffle(){calculateTeams(false);}
+
+function calculateTeams(saveHistory){
+ const p=[...table.rows].slice(1).map(r=>({
+  name:r.cells[0].firstChild.value,
+  rank:r.cells[1].firstChild.value,
+  val:rankValue[r.cells[1].firstChild.value]||1
+ }));
+ p.sort((a,b)=>b.val-a.val);
+
+ let A=[],B=[],sa=0,sb=0;
+ p.forEach(x=>sa<=sb?(A.push(x),sa+=x.val):(B.push(x),sb+=x.val));
+
+ show(A,B);
+
+ if(saveHistory){
+  history.unshift({time:new Date().toLocaleString(),A:A.map(x=>x.name),B:B.map(x=>x.name),memo:""});
+  localStorage.setItem("history",JSON.stringify(history));
+  renderHistory();
+ }
+}
+
+/* ====== 表示 ====== */
+function show(A,B){
+ powerA.innerHTML=""; powerB.innerHTML="";
+ let sumA=0,sumB=0;
+ A.forEach(x=>{sumA+=x.val;powerA.innerHTML+=`<li style="background:${rankColor[x.rank]}">${x.name}</li>`});
+ B.forEach(x=>{sumB+=x.val;powerB.innerHTML+=`<li style="background:${rankColor[x.rank]}">${x.name}</li>`});
+
+ sumAEl.textContent=`合計実力：${sumA}`;
+ sumBEl.textContent=`合計実力：${sumB}`;
+
+ const diff=Math.abs(sumA-sumB);
+ powerDiff.textContent=`差：${diff}`;
+ powerDiff.style.color="#f5e6b0";
+
+ reshuffleBtn.style.display="none";
+ reshuffleBtn.classList.remove("blink");
+ goodBalance.style.display="none";
+
+ if(diff>=3){powerDiff.style.color="#FF4444";powerDiff.textContent+="（偏りあり）";reshuffleBtn.style.display="block";reshuffleBtn.classList.add("blink");}
+else if(diff<=1){goodBalance.style.display="block";}
+}
+
+/* ====== 履歴 ====== */
+function renderHistory(){
+ historyList.innerHTML="";
+ history.forEach((h,idx)=>{
+  const li=document.createElement("li");
+  li.innerHTML=`
+   <b>${h.time}</b><br>
+   ☀ ${h.A.join("、")}<br>
+   🌙 ${h.B.join("、")}
+   <textarea class="memo">${h.memo||""}</textarea>
+   <button style="margin-top:6px;background:#a94442">削除</button>
+  `;
+  li.querySelector("textarea").addEventListener("input",e=>{history[idx].memo=e.target.value;localStorage.setItem("history",JSON.stringify(history));});
+  li.querySelector("button").onclick=()=>{history.splice(idx,1);localStorage.setItem("history",JSON.stringify(history));renderHistory();};
+  historyList.appendChild(li);
+ });
+}
+function clearHistory(){history=[];localStorage.setItem("history","[]");renderHistory();}
+
+/* ====== コピー ====== */
+function copyTeams(a){
+ let t=a?"/a\n":"";
+ [["【アストラ】",powerA],["【アンブラ】",powerB]].forEach(p=>{
+  t+=p[0]+"\n";
+  Array.from(p[1].children).forEach(li=>t+=li.textContent+"\n");
+ });
+ navigator.clipboard.writeText(t.trim());
+}
+</script>
+</body>
+</html>
+
